@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}Choose Your Class — Mission Control{% endblock %}
+{% block content %}
+<div class="character-creation-overlay">
+    <div class="character-creation-modal">
+        <div class="cc-header">
+            <h1><i class="fas fa-hat-wizard"></i> Welcome, {{ current_user.name }}</h1>
+            <p class="cc-subtitle">Every quest needs a hero. Choose your class to begin.</p>
+        </div>
+
+        <form method="POST" id="characterForm">
+            <div class="cc-classes-grid">
+                {% for key, cls in classes.items() %}
+                <div class="cc-class-card {% if suggested == key %}cc-suggested{% endif %}"
+                    onclick="selectClass('{{ key }}', this)" data-class="{{ key }}">
+                    {% if suggested == key %}
+                    <div class="cc-suggested-badge">Suggested for you</div>
+                    {% endif %}
+                    <div class="cc-class-icon" style="background-color: {{ cls.color }}20; color: {{ cls.color }}">
+                    <i class="fas fa-{{ cls.icon }} fa-3x"></i>
+                    </div>
+                    <h3 class="cc-class-name">{{ cls.name }}</h3>
+                    <p class="cc-class-desc">{{ cls.description }}</p>
+                    <div class="cc-ability">
+                    <i class="fas fa-star"></i> {{ cls.ability }}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+
+            <input type="hidden" name="character_class" id="selectedClass" value="">
+            <div class="cc-confirm text-center mt-4">
+                <button type="submit" class="btn btn-lg btn-primary" id="confirmBtn" disabled>
+                    <i class="fas fa-check-circle"></i> Confirm My Class
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function selectClass(classKey, element) {
+    document.querySelectorAll('.cc-class-card').forEach(c => c.classList.remove('cc-selected'));
+    element.classList.add('cc-selected');
+    document.getElementById('selectedClass').value = classKey;
+    document.getElementById('confirmBtn').disabled = false;
+    document.getElementById('confirmBtn').innerHTML =
+        '<i class="fas fa-check-circle"></i> Begin as ' + element.querySelector('.cc-class-name').textContent;
+}
+</script>
+{% endblock %}

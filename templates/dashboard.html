@@ -1,0 +1,391 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — RMG Mission Control{% endblock %}
+{% block content %}
+
+<!-- View Toggle + Focus Mode -->
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div class="btn-group" role="group">
+        <a href="{{ url_for('dashboard', view='global') }}" class="btn btn-{{ 'primary' if view == 'global' else 'outline-primary' }}">
+            <i class="fas fa-globe"></i> Global View
+        </a>
+        <a href="{{ url_for('dashboard', view='individual') }}" class="btn btn-{{ 'primary' if view == 'individual' else 'outline-primary' }}">
+            <i class="fas fa-user"></i> My Dashboard
+        </a>
+        {% if view == 'individual' %}
+        <a href="{{ url_for('dashboard', view='individual', focus='true' if not focus else 'false') }}"
+           class="btn btn-{{ 'warning' if focus else 'outline-warning' }}">
+            <i class="fas fa-crosshairs"></i> Focus Mode
+        </a>
+        {% endif %}
+    </div>
+    {% if current_user.is_superadmin %}
+    <div class="d-flex gap-2">
+        <form method="POST" action="{{ url_for('manual_priority_run') }}" class="d-inline">
+            <button type="submit" class="btn btn-outline-info btn-sm">
+                <i class="fas fa-sync"></i> Run Priority Engine
+            </button>
+        </form>
+    </div>
+    {% endif %}
+</div>
+
+{% if view == 'global' %}
+<!-- ==== GLOBAL VIEW ==== -->
+<div class="row">
+    <!-- Left Column: Stats + Tasks -->
+    <div class="col-lg-8">
+        <!-- Stats Row -->
+        <div class="row mb-3">
+            <div class="col-md-3">
+                <div class="stat-card">
+                    <div class="stat-value">{{ integrity.total }}<small>/100</small></div>
+                    <div class="stat-label">Data Integrity</div>
+                    <div class="progress mt-1">
+                    <div class="progress-bar {% if integrity.total >= 85 %}bg-success{% elif integrity.total >= 60 %}bg-warning{% else %}bg-danger{% endif %}"
+                    style="width: {{ integrity.total }}%"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card">
+                    <div class="stat-value">{{ completed_tasks }}<small>/{{ total_tasks }}</small></div>
+                    <div class="stat-label">Tasks Complete</div>
+                    <div class="progress mt-1">
+                    <div class="progress-bar bg-success" style="width: {{ (completed_tasks/total_tasks*100) if total_tasks > 0 else 0 }}%"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card">
+                    <div class="stat-value text-primary">{{ in_progress_tasks }}</div>
+                    <div class="stat-label">In Progress</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card">
+                    <div class="stat-value text-danger">{{ blocked_tasks }}</div>
+                    <div class="stat-label">Blocked</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Global Top 5 Priorities -->
+        <div class="card mb-3">
+            <div class="card-header bg-dark text-white">
+                <i class="fas fa-fire"></i> Top 5 Global Priorities
+            </div>
+            <div class="card-body p-0">
+                {% if global_priorities %}
+                <div class="list-group list-group-flush">
+                    {% for p in global_priorities %}
+                    <a href="{{ url_for('task_detail', task_id=p.task_id) }}" class="list-group-item list-group-item-action">
+                    <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                    <span class="badge bg-dark me-2">#{{ p.rank }}</span>
+                    <strong>{{ p.task.title }}</strong>
+                    <br><small class="text-muted">{{ p.summary }}</small>
+                    </div>
+                    <span class="badge bg-{{ 'danger' if p.score > 20 else 'warning' if p.score > 10 else 'info' }}">
+                    {{ p.score }}
+                    </span>
+                    </div>
+                    </a>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="p-3 text-muted">Priority engine has not run yet. {% if current_user.is_superadmin %}Click "Run Priority Engine" above.{% endif %}</div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- All Tasks Table -->
+        <div class="card mb-3">
+            <div class="card-header">
+                <i class="fas fa-tasks"></i> All Tasks
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                    <thead>
+                    <tr>
+                    <th>#</th>
+                    <th>Task</th>
+                    <th>Owner</th>
+                    <th>Priority</th>
+                    <th>Status</th>
+                    <th>Location</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {% for task in all_tasks %}
+                    <tr class="{% if task.is_blocked %}table-secondary{% endif %} cursor-pointer"
+                    onclick="window.location='{{ url_for('task_detail', task_id=task.id) }}'">
+                    <td>{{ task.task_number }}</td>
+                    <td>
+                    {{ task.title }}
+                    {% if task.is_blocked %}<span class="badge bg-secondary">Blocked</span>{% endif %}
+                    {% if task.revision_count > 0 %}<span class="badge bg-warning">Rev {{ task.revision_count }}</span>{% endif %}
+                    </td>
+                    <td>{{ task.owner.name if task.owner else 'Unassigned' }}</td>
+                    <td><span class="badge priority-{{ task.priority }}">{{ task.priority|upper }}</span></td>
+                    <td><span class="badge status-{{ task.status }}">{{ task.status|replace('_', ' ')|title }}</span></td>
+                    <td><small>{{ task.spreadsheet_location }}</small></td>
+                    </tr>
+                    {% endfor %}
+                    </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right Column: Leaderboard + Activity -->
+    <div class="col-lg-4">
+        <!-- Leaderboard -->
+        <div class="card mb-3">
+            <div class="card-header bg-warning text-dark">
+                <i class="fas fa-trophy"></i> Leaderboard
+            </div>
+            <div class="card-body p-0">
+                <div class="list-group list-group-flush">
+                    {% for entry in leaderboard %}
+                    <div class="list-group-item d-flex align-items-center">
+                    <span class="leaderboard-rank me-2">
+                    {% if entry.rank == 1 %}<i class="fas fa-crown text-warning"></i>
+                    {% elif entry.rank == 2 %}<i class="fas fa-medal text-secondary"></i>
+                    {% elif entry.rank == 3 %}<i class="fas fa-medal" style="color: #cd7f32"></i>
+                    {% else %}#{{ entry.rank }}{% endif %}
+                    </span>
+                    <div class="flex-grow-1">
+                    <div>
+                    <i class="fas fa-{{ entry.character_icon }}" style="color: {{ entry.character_color }}"></i>
+                    <strong>{{ entry.name }}</strong>
+                    <small class="text-muted">{{ entry.character_class }}</small>
+                    </div>
+                    <small>{{ entry.completed_tasks }}/{{ entry.total_tasks }} tasks | Q: {{ entry.quality_avg }}</small>
+                    </div>
+                    <span class="badge bg-primary">{{ entry.points }} pts</span>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Integrity Breakdown -->
+        <div class="card mb-3">
+            <div class="card-header">
+                <i class="fas fa-chart-pie"></i> Integrity Score Breakdown
+            </div>
+            <div class="card-body">
+                {% for d in integrity.details %}
+                <div class="mb-2">
+                    <div class="d-flex justify-content-between">
+                    <small>{{ d.category }}</small>
+                    <small>{{ d.score }}/100 ({{ d.weight }}%)</small>
+                    </div>
+                    <div class="progress" style="height: 8px">
+                    <div class="progress-bar {% if d.score >= 80 %}bg-success{% elif d.score >= 50 %}bg-warning{% else %}bg-danger{% endif %}"
+                    style="width: {{ d.score }}%"></div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Recent Activity -->
+        <div class="card mb-3">
+            <div class="card-header">
+                <i class="fas fa-stream"></i> Recent Activity
+            </div>
+            <div class="card-body activity-feed p-0">
+                {% for comment in recent_activity[:10] %}
+                <div class="activity-item p-2 border-bottom">
+                    <small>
+                    {% if comment.is_system %}
+                    <i class="fas fa-robot text-muted"></i>
+                    {% else %}
+                    <i class="fas fa-comment text-primary"></i>
+                    <strong>{{ comment.author.name }}</strong>
+                    {% endif %}
+                    {{ comment.content[:120] }}
+                    <br><span class="text-muted">{{ comment.created_at.strftime('%b %d, %I:%M %p') }}</span>
+                    </small>
+                </div>
+                {% endfor %}
+                {% if not recent_activity %}
+                <div class="p-3 text-muted text-center">No activity yet.</div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Post Announcement (SuperAdmin) -->
+        {% if current_user.is_superadmin %}
+        <div class="card mb-3">
+            <div class="card-header bg-info text-white">
+                <i class="fas fa-bullhorn"></i> Post Announcement
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('post_announcement') }}">
+                    <div class="mb-2">
+                    <textarea name="content" class="form-control" rows="2" placeholder="Announcement to all users..." required></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-info btn-sm w-100">Post</button>
+                </form>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+{% elif view == 'individual' %}
+<!-- ==== INDIVIDUAL VIEW ==== -->
+<div class="row">
+    <div class="col-lg-{% if focus %}12{% else %}8{% endif %}">
+        <!-- My Character Card + Stats -->
+        <div class="row mb-3">
+            <div class="col-md-4">
+                <div class="character-card-mini" style="border-left: 4px solid {{ character_classes[acting.character_class].color if acting.character_class and acting.character_class in character_classes else '#666' }}">
+                    <div class="d-flex align-items-center">
+                    <div class="char-icon-sm me-3" style="color: {{ character_classes[acting.character_class].color if acting.character_class and acting.character_class in character_classes else '#666' }}">
+                    <i class="fas fa-{{ character_classes[acting.character_class].icon if acting.character_class and acting.character_class in character_classes else 'user' }} fa-2x"></i>
+                    </div>
+                    <div>
+                    <strong>{{ acting.name }}</strong><br>
+                    <small>{{ acting.character_title or 'No class selected' }}</small><br>
+                    <span class="badge bg-primary">Lvl {{ acting.level }}: {{ acting.level_title }}</span>
+                    <span class="badge bg-warning text-dark">{{ acting.points }} pts</span>
+                    {% if acting.streak_days > 1 %}
+                    <span class="badge bg-danger"><i class="fas fa-fire"></i> {{ acting.streak_days }}-day streak</span>
+                    {% endif %}
+                    </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-8">
+                <!-- My Priorities -->
+                <div class="card h-100">
+                    <div class="card-header bg-dark text-white py-2">
+                    <i class="fas fa-crosshairs"></i> Your Top Priorities Today
+                    </div>
+                    <div class="card-body p-0">
+                    {% if user_priorities %}
+                    <div class="list-group list-group-flush">
+                    {% for p in user_priorities %}
+                    <a href="{{ url_for('task_detail', task_id=p.task_id) }}" class="list-group-item list-group-item-action py-2">
+                    <span class="badge bg-dark me-1">#{{ p.rank }}</span>
+                    {{ p.task.title }}
+                    </a>
+                    {% endfor %}
+                    </div>
+                    {% else %}
+                    <div class="p-3 text-muted">No priorities calculated yet.</div>
+                    {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- My Tasks -->
+        <div class="card mb-3">
+            <div class="card-header">
+                <i class="fas fa-clipboard-list"></i> My Tasks
+                <span class="badge bg-primary float-end">{{ my_tasks|length }} total</span>
+            </div>
+            <div class="card-body p-0">
+                {% if my_tasks %}
+                <div class="list-group list-group-flush">
+                    {% for task in my_tasks %}
+                    <a href="{{ url_for('task_detail', task_id=task.id) }}" class="list-group-item list-group-item-action">
+                    <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                    <span class="badge priority-{{ task.priority }} me-1">{{ task.priority|upper }}</span>
+                    <strong>{{ task.title }}</strong>
+                    {% if task.is_blocked %}
+                    <span class="badge bg-secondary ms-1">
+                    <i class="fas fa-lock"></i> Blocked by: {{ task.blocking_tasks|map(attribute='title')|join(', ') }}
+                    </span>
+                    {% endif %}
+                    <br><small class="text-muted">{{ task.spreadsheet_location }} | {{ task.base_points }} pts</small>
+                    </div>
+                    <span class="badge status-{{ task.status }}">{{ task.status|replace('_', ' ')|title }}</span>
+                    </div>
+                    </a>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="p-3 text-center text-muted">No tasks assigned to you.</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    {% if not focus %}
+    <!-- Right column (hidden in focus mode) -->
+    <div class="col-lg-4">
+        <!-- Quick Actions -->
+        <div class="card mb-3">
+            <div class="card-header">
+                <i class="fas fa-bolt"></i> Quick Actions
+            </div>
+            <div class="card-body">
+                <a href="{{ url_for('file_library') }}" class="btn btn-outline-primary btn-sm w-100 mb-2">
+                    <i class="fas fa-upload"></i> Upload File
+                </a>
+                <a href="{{ url_for('dashboard', view='global') }}" class="btn btn-outline-secondary btn-sm w-100 mb-2">
+                    <i class="fas fa-hands-helping"></i> Offer Help to a Teammate
+                </a>
+                <a href="{{ url_for('help_page') }}" class="btn btn-outline-info btn-sm w-100">
+                    <i class="fas fa-question-circle"></i> Help / FAQs
+                </a>
+            </div>
+        </div>
+
+        <!-- Mini Leaderboard -->
+        <div class="card mb-3">
+            <div class="card-header bg-warning text-dark">
+                <i class="fas fa-trophy"></i> Leaderboard
+            </div>
+            <div class="card-body p-0">
+                {% for entry in leaderboard[:5] %}
+                <div class="list-group-item d-flex justify-content-between align-items-center py-2">
+                    <span>
+                    {% if entry.rank == 1 %}<i class="fas fa-crown text-warning"></i>{% endif %}
+                    <i class="fas fa-{{ entry.character_icon }}" style="color: {{ entry.character_color }}"></i>
+                    {{ entry.name }}
+                    </span>
+                    <span class="badge bg-primary">{{ entry.points }}</span>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- My Points History -->
+        <div class="card mb-3">
+            <div class="card-header">
+                <i class="fas fa-coins"></i> Recent Points
+            </div>
+            <div class="card-body p-0">
+                {% set recent_points = acting.points_log[-5:] if acting.points_log else [] %}
+                {% if recent_points %}
+                {% for log in recent_points|reverse %}
+                <div class="list-group-item py-2">
+                    <small>
+                    <span class="{% if log.points > 0 %}text-success{% else %}text-danger{% endif %}">
+                    {{ '+' if log.points > 0 else '' }}{{ log.points }}
+                    </span>
+                    {{ log.reason }}
+                    <br><span class="text-muted">{{ log.created_at.strftime('%b %d, %I:%M %p') }}</span>
+                    </small>
+                </div>
+                {% endfor %}
+                {% else %}
+                <div class="p-3 text-muted text-center">No points earned yet. Get to work!</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endif %}
+
+{% endblock %}

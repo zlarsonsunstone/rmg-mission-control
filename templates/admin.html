@@ -1,0 +1,177 @@
+{% extends "base.html" %}
+{% block title %}Admin Panel — Mission Control{% endblock %}
+{% block content %}
+<h2><i class="fas fa-cog"></i> Admin Panel</h2>
+
+<div class="row">
+    <!-- User Management -->
+    <div class="col-lg-6">
+        <div class="card mb-3">
+            <div class="card-header bg-primary text-white">
+                <i class="fas fa-users"></i> User Management
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Email</th>
+                                <th>Role</th>
+                                <th>Points</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for user in users %}
+                            <tr>
+                                <td>
+                                    {% if user.character_class %}
+                                    <i class="fas fa-{{ character_classes[user.character_class].icon if user.character_class in character_classes else 'user' }}"
+                                       style="color: {{ character_classes[user.character_class].color if user.character_class in character_classes else '#666' }}"></i>
+                                    {% endif %}
+                                    {{ user.name }}
+                                </td>
+                                <td><small>{{ user.email }}</small></td>
+                                <td><span class="badge bg-{{ 'danger' if user.is_superadmin else 'secondary' }}">{{ user.role }}</span></td>
+                                <td>{{ user.points }}</td>
+                                <td>
+                                    {% if user.id != current_user.id %}
+                                    <form method="POST" action="{{ url_for('clone_user', user_id=user.id) }}" class="d-inline">
+                                        <button type="submit" class="btn btn-sm btn-outline-info" title="View as this user">
+                                            <i class="fas fa-user-secret"></i>
+                                        </button>
+                                    </form>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Add User -->
+        <div class="card mb-3">
+            <div class="card-header">
+                <i class="fas fa-user-plus"></i> Add New User
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('add_user') }}">
+                    <div class="row g-2">
+                        <div class="col-md-6">
+                            <input type="text" name="name" class="form-control" placeholder="Full Name" required>
+                        </div>
+                        <div class="col-md-6">
+                            <input type="email" name="email" class="form-control" placeholder="Email" required>
+                        </div>
+                        <div class="col-md-6">
+                            <input type="password" name="password" class="form-control" placeholder="Password" value="changeme123">
+                        </div>
+                        <div class="col-md-6">
+                            <select name="role" class="form-select">
+                                <option value="user">User</option>
+                                <option value="superadmin">SuperAdmin</option>
+                            </select>
+                        </div>
+                        <div class="col-12">
+                            <button type="submit" class="btn btn-primary w-100">Add User</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pending Items -->
+    <div class="col-lg-6">
+        <!-- Pending FAQs -->
+        <div class="card mb-3">
+            <div class="card-header bg-warning text-dark">
+                <i class="fas fa-question-circle"></i> Pending FAQs ({{ pending_faqs|length }})
+            </div>
+            <div class="card-body p-0">
+                {% if pending_faqs %}
+                {% for faq in pending_faqs %}
+                <div class="list-group-item">
+                    <p class="mb-1"><strong>{{ faq.question }}</strong></p>
+                    <small class="text-muted">From: {{ faq.submitter.name }} | Category: {{ faq.category }}</small>
+                    <form method="POST" action="{{ url_for('approve_faq', faq_id=faq.id) }}" class="mt-2">
+                        <div class="input-group input-group-sm">
+                            <input type="text" name="answer" class="form-control" placeholder="Answer..." required>
+                            <button type="submit" class="btn btn-success"><i class="fas fa-check"></i> Approve</button>
+                        </div>
+                    </form>
+                </div>
+                {% endfor %}
+                {% else %}
+                <div class="p-3 text-muted text-center">No pending FAQs.</div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Access Requests -->
+        <div class="card mb-3">
+            <div class="card-header bg-info text-white">
+                <i class="fas fa-key"></i> Access Requests ({{ access_requests|length }})
+            </div>
+            <div class="card-body p-0">
+                {% if access_requests %}
+                {% for ar in access_requests %}
+                <div class="list-group-item d-flex justify-content-between align-items-center">
+                    <div>
+                        <strong>{{ ar.requester.name }}</strong> requests access to: {{ ar.resource_type }}
+                        <br><small class="text-muted">{{ ar.reason }}</small>
+                    </div>
+                    <div>
+                        <form method="POST" action="{{ url_for('handle_access_request', ar_id=ar.id, action='approve') }}" class="d-inline">
+                            <button type="submit" class="btn btn-sm btn-success"><i class="fas fa-check"></i></button>
+                        </form>
+                        <form method="POST" action="{{ url_for('handle_access_request', ar_id=ar.id, action='deny') }}" class="d-inline">
+                            <button type="submit" class="btn btn-sm btn-danger"><i class="fas fa-times"></i></button>
+                        </form>
+                    </div>
+                </div>
+                {% endfor %}
+                {% else %}
+                <div class="p-3 text-muted text-center">No pending access requests.</div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="card mb-3">
+            <div class="card-header">
+                <i class="fas fa-bolt"></i> Quick Actions
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('manual_priority_run') }}" class="d-inline">
+                    <button type="submit" class="btn btn-outline-primary mb-2 w-100">
+                        <i class="fas fa-sync"></i> Run Priority Engine Now
+                    </button>
+                </form>
+                <a href="{{ url_for('dashboard', view='global') }}" class="btn btn-outline-secondary mb-2 w-100">
+                    <i class="fas fa-chart-line"></i> View Global Dashboard
+                </a>
+                <a href="{{ url_for('file_library') }}" class="btn btn-outline-info w-100">
+                    <i class="fas fa-folder"></i> File Library
+                </a>
+            </div>
+        </div>
+
+        <!-- System Info -->
+        <div class="card">
+            <div class="card-header">
+                <i class="fas fa-info-circle"></i> System Info
+            </div>
+            <div class="card-body">
+                <p><strong>Total Users:</strong> {{ users|length }}</p>
+                <p><strong>Deadline:</strong> February 20, 2026</p>
+                <p><strong>Priority Engine:</strong> Runs every 6 hours</p>
+                <p class="mb-0"><small class="text-muted">Clone Mode allows you to see the dashboard exactly as any user sees it.</small></p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

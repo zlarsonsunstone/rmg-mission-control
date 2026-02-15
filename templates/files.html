@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+{% block title %}Files — Mission Control{% endblock %}
+{% block content %}
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between">
+                <span><i class="fas fa-folder-open"></i> File Library</span>
+                <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#uploadModal">
+                    <i class="fas fa-upload"></i> Upload File
+                </button>
+            </div>
+            <div class="card-body">
+                <!-- Search & Filter -->
+                <form method="GET" class="row g-2 mb-3">
+                    <div class="col-md-6">
+                    <input type="text" name="search" class="form-control" placeholder="Search files..." value="{{ search }}">
+                    </div>
+                    <div class="col-md-4">
+                    <select name="task_id" class="form-select">
+                    <option value="">All Tasks</option>
+                    {% for task in tasks %}
+                    <option value="{{ task.id }}" {% if task_filter == task.id|string %}selected{% endif %}>
+                    #{{ task.task_number }}: {{ task.title[:40] }}
+                    </option>
+                    {% endfor %}
+                    </select>
+                    </div>
+                    <div class="col-md-2">
+                    <button type="submit" class="btn btn-outline-primary w-100">Filter</button>
+                    </div>
+                </form>
+
+                <!-- Files Table -->
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                    <thead>
+                    <tr>
+                    <th>File</th>
+                    <th>Task</th>
+                    <th>Uploaded By</th>
+                    <th>Date</th>
+                    <th>Size</th>
+                    <th></th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {% for f in files %}
+                    <tr>
+                    <td>
+                    <i class="fas fa-file{% if f.original_filename.endswith('.xlsx') %}-excel text-success{% elif f.original_filename.endswith('.docx') %}-word text-primary{% elif f.original_filename.endswith('.pdf') %}-pdf text-danger{% else %} text-secondary{% endif %}"></i>
+                    {{ f.original_filename }}
+                    {% if f.description %}<br><small class="text-muted">{{ f.description[:80] }}</small>{% endif %}
+                    </td>
+                    <td>{% if f.task %}<a href="{{ url_for('task_detail', task_id=f.task_id) }}">#{{ f.task.task_number }}</a>{% else %}General{% endif %}</td>
+                    <td>{{ f.uploader.name }}</td>
+                    <td><small>{{ f.created_at.strftime('%b %d, %I:%M %p') }}</small></td>
+                    <td><small>{{ (f.file_size / 1024)|round(1) }} KB</small></td>
+                    <td><a href="{{ url_for('download_file', file_id=f.id) }}" class="btn btn-sm btn-outline-primary"><i class="fas fa-download"></i></a></td>
+                    </tr>
+                    {% endfor %}
+                    {% if not files %}
+                    <tr><td colspan="6" class="text-center text-muted py-4">No files found.</td></tr>
+                    {% endif %}
+                    </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header"><i class="fas fa-info-circle"></i> File Guidelines</div>
+            <div class="card-body">
+                <p><strong>Supported formats:</strong> xlsx, docx, pdf, png, jpg, csv, txt, pptx, zip</p>
+                <p><strong>Max size:</strong> 50 MB</p>
+                <p>Files attached to tasks are automatically linked. Use the general upload for supporting documents.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Upload Modal -->
+<div class="modal fade" id="uploadModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" action="{{ url_for('upload_file') }}" enctype="multipart/form-data">
+                <div class="modal-header"><h5 class="modal-title">Upload File</h5></div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                    <label class="form-label">File</label>
+                    <input type="file" class="form-control" name="file" required>
+                    </div>
+                    <div class="mb-3">
+                    <label class="form-label">Link to Task (optional)</label>
+                    <select name="task_id" class="form-select">
+                    <option value="">General / No specific task</option>
+                    {% for task in tasks %}
+                    <option value="{{ task.id }}">#{{ task.task_number }}: {{ task.title[:50] }}</option>
+                    {% endfor %}
+                    </select>
+                    </div>
+                    <div class="mb-3">
+                    <label class="form-label">Description</label>
+                    <input type="text" name="description" class="form-control" placeholder="Brief description...">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-upload"></i> Upload</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,142 @@
+{% extends "base.html" %}
+{% block title %}Help & FAQs — Mission Control{% endblock %}
+{% block content %}
+<div class="row">
+    <div class="col-lg-8">
+        <h2><i class="fas fa-question-circle"></i> Help Center</h2>
+
+        <!-- Getting Started -->
+        <div class="card mb-3">
+            <div class="card-header bg-primary text-white">
+                <i class="fas fa-rocket"></i> Getting Started
+            </div>
+            <div class="card-body">
+                <div class="accordion" id="gettingStarted">
+                    <div class="accordion-item">
+                    <h2 class="accordion-header"><button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#gs1">What is Mission Control?</button></h2>
+                    <div id="gs1" class="accordion-collapse collapse show" data-bs-parent="#gettingStarted">
+                    <div class="accordion-body">Mission Control is the team collaboration dashboard for the RMG VA market research response. It tracks tasks, deadlines, quality, and communication with gamification to drive engagement and on-time delivery. The VA submission deadline is February 20, 2026.</div>
+                    </div>
+                    </div>
+                    <div class="accordion-item">
+                    <h2 class="accordion-header"><button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#gs2">How do I get started?</button></h2>
+                    <div id="gs2" class="accordion-collapse collapse" data-bs-parent="#gettingStarted">
+                    <div class="accordion-body">Log in with your email and the password provided by your admin. On first login, you'll create your character (choose a class that matches your role). Then you'll land on your personal dashboard showing your assigned tasks and priorities.</div>
+                    </div>
+                    </div>
+                    <div class="accordion-item">
+                    <h2 class="accordion-header"><button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#gs3">How does the points system work?</button></h2>
+                    <div id="gs3" class="accordion-collapse collapse" data-bs-parent="#gettingStarted">
+                    <div class="accordion-body">
+                    Points are earned for completing tasks, helping teammates, and contributing to the project. Key scoring:
+                    <ul class="mt-2">
+                    <li>Task completed on time: 25-100 points (based on priority)</li>
+                    <li>Early completion: 1.5x multiplier</li>
+                    <li>High quality (90+): +25 bonus</li>
+                    <li>Perfect first-try: +50 bonus</li>
+                    <li>Helping a teammate: +15</li>
+                    <li>Late completion: 0.5x multiplier</li>
+                    <li>Revision required: -10 per round</li>
+                    </ul>
+                    </div>
+                    </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- FAQs -->
+        <div class="card mb-3">
+            <div class="card-header bg-success text-white">
+                <i class="fas fa-list"></i> Frequently Asked Questions
+            </div>
+            <div class="card-body">
+                {% if faqs %}
+                <div class="accordion" id="faqAccordion">
+                    {% for faq in faqs %}
+                    <div class="accordion-item">
+                    <h2 class="accordion-header">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq{{ faq.id }}">
+                    {{ faq.question }}
+                    <span class="badge bg-secondary ms-2">{{ faq.category }}</span>
+                    </button>
+                    </h2>
+                    <div id="faq{{ faq.id }}" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                    <div class="accordion-body">
+                    {{ faq.answer or 'Answer pending.' }}
+                    {% if faq.video_url %}
+                    <div class="mt-2"><a href="{{ faq.video_url }}" target="_blank"><i class="fas fa-video"></i> Watch video</a></div>
+                    {% endif %}
+                    </div>
+                    </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-muted">No FAQs published yet. Submit a question below!</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Tips -->
+        <div class="card mb-3">
+            <div class="card-header">
+                <i class="fas fa-lightbulb"></i> Tips
+            </div>
+            <div class="card-body">
+                <ul>
+                    <li><strong>Use Focus Mode</strong> when you need to eliminate distractions and concentrate on your tasks.</li>
+                    <li><strong>Check priorities every morning</strong> — they update every 6 hours based on project needs.</li>
+                    <li><strong>Complete tasks early</strong> for a 1.5x point multiplier.</li>
+                    <li><strong>Use @mentions</strong> in comments to notify specific teammates.</li>
+                    <li><strong>Flag for help early</strong> — don't wait until the deadline.</li>
+                    <li><strong>Upload files to specific tasks</strong> rather than to the general library for better organization.</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Submit Question -->
+    <div class="col-lg-4">
+        <div class="card mb-3">
+            <div class="card-header bg-info text-white">
+                <i class="fas fa-plus-circle"></i> Submit a Question
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('submit_faq') }}">
+                    <div class="mb-3">
+                    <label class="form-label">Your Question</label>
+                    <textarea name="question" class="form-control" rows="3" required placeholder="What do you need help with?"></textarea>
+                    </div>
+                    <div class="mb-3">
+                    <label class="form-label">Category</label>
+                    <select name="category" class="form-select">
+                    <option value="general">General</option>
+                    <option value="tasks">Tasks</option>
+                    <option value="files">Files</option>
+                    <option value="points">Points & Gamification</option>
+                    <option value="communication">Communication</option>
+                    </select>
+                    </div>
+                    <button type="submit" class="btn btn-info w-100">Submit Question</button>
+                </form>
+                <small class="text-muted mt-2 d-block">Questions are reviewed by SuperAdmins before publishing.</small>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <i class="fas fa-phone"></i> Need Immediate Help?
+            </div>
+            <div class="card-body">
+                <p>Contact a SuperAdmin directly:</p>
+                <ul class="list-unstyled">
+                    <li><i class="fas fa-user"></i> Jonathan Sweetser</li>
+                    <li><i class="fas fa-user"></i> Zack Larson</li>
+                </ul>
+                <p class="text-muted small">Or use the "Flag for Help" button on any task to request assistance from a specific teammate.</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

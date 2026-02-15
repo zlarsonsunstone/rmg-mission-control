@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}RMG Mission Control{% endblock %}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
+</head>
+<body class="{% if focus|default(false) %}focus-mode{% endif %}">
+    <!-- Clone Mode Banner -->
+    {% if is_cloning %}
+    <div class="clone-banner">
+        <i class="fas fa-user-secret"></i> Viewing as: <strong>{{ acting_user.name }}</strong>
+        <form method="POST" action="{{ url_for('unclone_user') }}" class="d-inline ms-3">
+            <button type="submit" class="btn btn-sm btn-light">Exit Clone Mode</button>
+        </form>
+    </div>
+    {% endif %}
+
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="{{ url_for('dashboard') }}">
+                <i class="fas fa-shield-alt"></i> Mission Control
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('dashboard') }}"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('file_library') }}"><i class="fas fa-folder"></i> Files</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('help_page') }}"><i class="fas fa-question-circle"></i> Help</a>
+                    </li>
+                    {% if current_user.is_superadmin %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('admin_panel') }}"><i class="fas fa-cog"></i> Admin</a>
+                    </li>
+                    {% endif %}
+                </ul>
+                <ul class="navbar-nav">
+                    <li class="nav-item position-relative">
+                        <a class="nav-link" href="{{ url_for('notifications') }}">
+                            <i class="fas fa-bell"></i>
+                            {% if unread_count > 0 %}
+                            <span class="badge bg-danger notification-badge">{{ unread_count }}</span>
+                            {% endif %}
+                        </a>
+                    </li>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
+                            <i class="fas fa-user-circle"></i> {{ current_user.name }}
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><span class="dropdown-item-text text-muted">{{ current_user.email }}</span></li>
+                            <li><span class="dropdown-item-text"><span class="badge bg-primary">{{ current_user.points }} pts</span> <span class="badge bg-info">Lvl {{ current_user.level }}</span></span></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="{{ url_for('logout') }}"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
+                        </ul>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Announcements Bar -->
+    {% if announcements and not focus|default(false) %}
+    <div class="announcements-bar">
+        <i class="fas fa-bullhorn text-warning"></i>
+        {% for ann in announcements %}
+        <span class="announcement-item">{{ ann.content }}</span>{% if not loop.last %} | {% endif %}
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Deadline Bar -->
+    {% if not focus|default(false) %}
+    <div class="deadline-bar">
+        <strong>VA Submission Deadline: Feb 20, 2026</strong> — <span id="countdown">Loading...</span>
+    </div>
+    {% endif %}
+
+    <!-- Main Content -->
+    <main class="container-fluid py-3">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        {% for category, message in messages %}
+        <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        {% endfor %}
+        {% endif %}
+        {% endwith %}
+
+        {% block content %}{% endblock %}
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>
